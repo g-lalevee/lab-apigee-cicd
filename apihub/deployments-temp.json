@@ -1,0 +1,44 @@
+[
+    {
+        "name":"projects/PROJECT_ID/locations/LOCATION/deployments/deployment-cicd",
+        "displayName":"Deployment 1",
+        "description":"Deployment 1",
+        "documentation":{
+            "externalUri":"https://api-test.docs.example.com"
+        },
+        "deploymentType": {
+        "attribute": "projects/PROJECT_ID/locations/LOCATION/attributes/system-deployment-type",
+        "enumValues": {
+            "values": [
+                {
+                    "id": "apigee"
+                }
+            ]
+        }
+        },
+        "resourceUri": "organizations/zzzz/apis/xxxxx/revisions/1/environments/yyy",
+        "endpoints":[
+            "https://foo.com"
+        ],
+        "slo": {
+        "attribute": "projects/PROJECT_ID/locations/LOCATION/attributes/system-slo",
+        "enumValues": {
+            "values": [
+                {
+                    "id":"99-95"
+                }
+            ]
+        }
+        },
+        "environment": {
+        "attribute": "projects/PROJECT_ID/locations/LOCATION/attributes/system-environment",
+        "enumValues": {
+            "values": [
+                {
+                    "id":"development"
+                }
+            ]
+          }
+        }
+    }
+]

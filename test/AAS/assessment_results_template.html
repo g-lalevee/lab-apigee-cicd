@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+  font-family: Arial, sans-serif; 
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  background-color: #f2f2f2; 
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+td {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+
+.high-severity { 
+  background-color: #ffdddd; 
+}
+
+.medium-severity { 
+  background-color: #ffffcc; 
+}
+
+h2 img {
+      height: 50px; /* Adjust the height as needed */
+      vertical-align: bottom; /* Align the icon with the text */
+      margin-right: 5px; /* Add some space between the icon and text */
+      margin-bottom: -5px; /* Add some space between the icon and text */
+    }
+
+</style>
+</head>
+<body>
+
+<h2><img src="https://www.gstatic.com/bricks/image/b45728f17bf88494b25d78a9fb27ae538e6eb4a06a972f6502b7410ff714532d.svg" alt="Icon">Apigee Advanced API Security: security Assessment Results</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Resource Type</th>
+      <th>Resource Name</th>
+      <th>Resource Revision ID</th>
+      <th>Create Time</th>
+      <th>Score</th>
+      <th>Severity</th>
+      <th>Failed Assessments</th>
+      <th>Assessment Recommendations</th>
+    </tr>
+  </thead>
+  <tbody id="results-body">
+  </tbody>
+</table>
+
+<script>
+  var $JS_CODE
+
+  var resultsBody = document.getElementById("results-body");
+
+  jsonData.securityAssessmentResults.forEach(function(result) {
+    var row = resultsBody.insertRow();
+    var resourceTypeCell = row.insertCell();
+    var resourceNameCell = row.insertCell();
+    var resourceRevisionIdCell = row.insertCell();
+    var createTimeCell = row.insertCell();
+    var scoreCell = row.insertCell();
+    var severityCell = row.insertCell();
+    var failedAssessmentsCell = row.insertCell();
+    var recommendationsCell = row.insertCell();
+
+    resourceTypeCell.innerHTML = result.resource.type;
+    resourceNameCell.innerHTML = result.resource.name;
+    resourceRevisionIdCell.innerHTML = result.resource.resourceRevisionId;
+    createTimeCell.innerHTML = result.createTime;
+    scoreCell.innerHTML = result.scoringResult.score + "%";
+    severityCell.innerHTML = result.scoringResult.severity;
+
+    // Construct "Failed Assessments" cell content
+    var failedAssessmentsText = "";
+    for (var key in result.scoringResult.failedAssessmentPerWeight) {
+      failedAssessmentsText += key + ": " + result.scoringResult.failedAssessmentPerWeight[key] + " ";
+    }
+    failedAssessmentsCell.innerHTML = failedAssessmentsText;
+
+    // Construct "Assessment Recommendations" cell content
+    var recommendationsList = "<ul>";
+    for (var key in result.scoringResult.assessmentRecommendations) {
+      var recommendation = result.scoringResult.assessmentRecommendations[key];
+      recommendationsList += "<li>" + recommendation.displayName + " - " + recommendation.verdict;
+      if (recommendation.recommendations) {
+        recommendationsList += "<ul>";
+        recommendation.recommendations.forEach(function(rec) {
+          recommendationsList += "<li>" + rec.description;
+          if (rec.link) {
+            recommendationsList += " (<a href='" + rec.link.uri + "'>" + rec.link.text + "</a>)</li>";
+          }
+        });
+        recommendationsList += "</ul>";
+      }
+      recommendationsList += "</li>";
+    }
+    recommendationsList += "</ul>";
+    recommendationsCell.innerHTML = recommendationsList;
+
+    // Apply row coloring based on severity
+    if (result.scoringResult.severity === "HIGH") {
+      row.classList.add("high-severity");
+    } else if (result.scoringResult.severity === "MEDIUM") {
+      row.classList.add("medium-severity");
+    } 
+  });
+</script>
+
+</body>
+</html>

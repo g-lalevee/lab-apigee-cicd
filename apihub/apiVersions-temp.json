@@ -1,0 +1,25 @@
+[
+   {
+      "name":"projects/PROJECT_ID/locations/LOCATION/apis/API_NAME/versions/version-1",
+      "displayName":"version-1",
+      "description":"version-1",
+      "documentation":{
+         "externalUri":"https://api-docs.example.com"
+      },
+      "deployments":[
+         "projects/PROJECT_ID/locations/LOCATION/deployments/xxxx"
+      ],
+      "lifecycle":{
+         "attribute":"projects/PROJECT_ID/locations/LOCATION/attributes/system-lifecycle",
+         "enumValues":{
+            "values":[
+               {
+                  "id":"concept"
+               }
+            ]
+         }
+      },
+      "attributes":{},
+      "selectedDeployment":"projects/PROJECT_ID/locations/LOCATION/deployments/xxxx"
+   }
+]

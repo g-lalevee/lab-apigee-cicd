@@ -1,0 +1,35 @@
+[
+    {
+       "name":"$product_name",
+       "displayName":"$product_name",
+       "description":"$product_description",
+       "approvalType":"auto",
+       "environments":[
+          "$apigee_env"
+       ],
+       "attributes": [
+        {
+            "name": "access",
+            "value": "public"
+        }
+       ],
+       "quota":"10000",
+       "quotaInterval":"1",
+       "quotaTimeUnit":"month",
+       "operationGroup":{
+          "operationConfigs":[
+             {
+                "apiSource":"$proxy_name",
+                "operations":[
+                   {
+                      "resource":"/",
+                      "methods":[]
+                   }
+                ],
+                "quota":{},
+                "attributes":[]
+             }
+          ]
+       }
+    }
+ ]
