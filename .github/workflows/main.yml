@@ -1,5 +1,5 @@
 
-name: Apigee OAS-First pipeline
+name: Apigee CICD Lab
 
 on: push
 
@@ -69,7 +69,7 @@ jobs:
             apigee-go-gen render apiproxy --template ./templates/oas/apiproxy.yaml \
             --include ./templates/oas/*.tmpl \
             --set target_server_url=$new_url \
-            --set-oas spec=./specs/oas/proxy/airports-spec.yaml \
+            --set-oas spec=./specs/oas/proxy/recipes.yaml \
             --output ./
           fi
 
@@ -80,7 +80,7 @@ jobs:
           echo "api_url=$api_url"
           echo "api_url=$api_url" >> $GITHUB_OUTPUT
 
-          # retrieve prox name from generated proxy
+          # retrieve proxy name from generated proxy
           echo "proxy_name=$proxy_name$APIGEE_DEPLOYMENT_SUFFIX"
           echo "proxy_name=$proxy_name$APIGEE_DEPLOYMENT_SUFFIX" >> $GITHUB_OUTPUT
           echo "------"
@@ -249,204 +249,3 @@ jobs:
             git commit -m "Generated proxy (from #$(echo $GITHUB_SHA | cut -c1-7))" --no-verify
             git push --no-verify            
           fi
-
-
-# JOB 3 ------------------------------------------------------------------------
-
-  publish-to-integrated-portal:
-    needs: [AAS-risk-assesment]
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4   
-
-        # Generate SA key file from secret variable
-      - name: Generate SA key file
-        run: echo $GCP_SERVICE_ACCOUNT >  portal/sa.json
-
-        # Update files
-      - name: Configure Integrated portal files & Publish API Product
-        run: |
-          echo "INFO ---------- Get target Apigee Organization and Environment from .env file"
-          set -a
-          source .env
-          set +a    
-          export proxy_name="$proxy_name$APIGEE_DEPLOYMENT_SUFFIX"
-         
-          cd portal
-
-          echo "subsitute variable in apiDocs.json file"
-          envsubst < ./org/apiDocs-temp.json > ./org/apiDocs.json
-          rm ./org/apiDocs-temp.json
-
-          echo "subsitute variable in apiProducts.json file"
-          envsubst < ./org/apiProducts-temp.json > ./org/apiProducts.json
-          rm ./org/apiProducts-temp.json 
-
-          echo "mvn install -q -Ptest -Dorg=$apigee_org -DsiteId=bap-emea-apigee-5-cltest -Dapigee.config.options=update -Dapigee.config.dir=. -Dfile=sa.json"
-          mvn -q install -Ptest -Dorg=$apigee_org -DsiteId=$portal_site_id -Dapigee.config.options=update -Dapigee.config.dir=. -Dfile=sa.json
-
-# JOB 4 ------------------------------------------------------------------------
-
-  publish-to-apihub:
-    needs: [publish-to-integrated-portal]
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    runs-on: ubuntu-latest
-  
-    steps:
-      - uses: actions/checkout@v4   
-
-
-  # Generate SA key file from secret variable
-      - name: Generate SA key file
-        run: echo $GCP_SERVICE_ACCOUNT >  apihub/sa.json
-
-  # Update files
-      - name: Configure API Hub files & Deploy
-        run: |
-          echo "INFO ---------- Get target Apigee Organization and Environment from .env file"
-          set -a
-          source .env
-          set +a
-          
-          cd apihub
-          export proxy_name="$proxy_name$APIGEE_DEPLOYMENT_SUFFIX"
-          echo "proxy_name=$proxy_name"
-
-          ###### update api.json file
-          jq --arg var "${proxy_name}" '.[0].name |= "projects/PROJECT_ID/locations/LOCATION/apis/\($var)"' apis-temp.json > apis.json 
-          cp  apis.json  apis-temp.json
-          jq --arg var "${api_targetUser}" '.[0]."targetUser"."enumValues"."values"[0].id |= "\($var)"' apis-temp.json > apis.json 
-          cp  apis.json  apis-temp.json
-
-          # update API System Attributes
-          jq --arg var "${api_targetUser}" '.[0]."targetUser"."enumValues"."values"[0].id |= "\($var)"' apis-temp.json > apis.json 
-          cp  apis.json  apis-temp.json
-          jq --arg var "${api_team}" '.[0]."team"."enumValues"."values"[0].id |= "\($var)"' apis-temp.json > apis.json 
-          cp  apis.json  apis-temp.json
-          jq --arg var "${api_businessUnit}" '.[0]."businessUnit"."enumValues"."values"[0].id |= "\($var)"' apis-temp.json > apis.json 
-          cp  apis.json  apis-temp.json 
-          jq --arg var "${api_maturityLevel}" '.[0]."maturityLevel"."enumValues"."values"[0].id |= "\($var)"' apis-temp.json > apis.json 
-          cp  apis.json  apis-temp.json
-          jq --arg var "${api_apiStyle}" '.[0]."apiStyle"."enumValues"."values"[0].id |= "\($var)"' apis-temp.json > apis.json 
-
-          echo ------------------------------------------------------------------------
-          echo "apis.json" 
-          echo " "
-          cat apis.json
-          echo ------------------------------------------------------------------------
-
-          ####### update apiVersions.json file
-          jq --arg var "${proxy_name}" '.[0].name |= "projects/PROJECT_ID/locations/LOCATION/apis/\($var)/versions/version-1"' apiVersions-temp.json > apiVersions.json
-          cp apiVersions.json apiVersions-temp.json
-          jq --arg var "${proxy_name}" '.[0]."deployments"[0] |= "projects/PROJECT_ID/locations/LOCATION/deployments/\($var)"' apiVersions-temp.json > apiVersions.json
-          cp apiVersions.json apiVersions-temp.json
-          jq --arg var "${proxy_name}" '.[0]."selectedDeployment" |= "projects/PROJECT_ID/locations/LOCATION/deployments/\($var)"' apiVersions-temp.json > apiVersions.json
-          cp apiVersions.json apiVersions-temp.json
-          jq --arg var "${apiversion_lifecycle}" '.[0]."lifecycle"."enumValues"."values"[0]."id" |= "\($var)"' apiVersions-temp.json > apiVersions.json
-          
-          echo ------------------------------------------------------------------------
-          echo "apiVersions.json" 
-          echo " "
-          cat apiVersions.json
-          echo ------------------------------------------------------------------------
-
-          ####### update deploments.json file
-          jq --arg var "${proxy_name}" '.[0].name |= "projects/PROJECT_ID/locations/LOCATION/deployments/\($var)"' deployments-temp.json > deployments.json 
-          cp deployments.json deployments-temp.json 
-
-          export deployment_docExternalUri="https://$portal_site_id.apigee.io/docs/$product_name/1/overview"
-          export deployment_endpoints_1=$new_url
-
-          jq --arg var "${deployment_docExternalUri}" '.[0]."documentation"."externalUri" |= "\($var)"' deployments-temp.json > deployments.json
-          cp deployments.json deployments-temp.json 
-          jq --arg var "${deployment_deploymentType}" '.[0]."deploymentType"."enumValues"."values"[0]."id" |= "\($var)"' deployments-temp.json > deployments.json
-          cp deployments.json deployments-temp.json 
-          jq --arg var "${deployment_endpoints_1}" '.[0]."endpoints"[0] |= "\($var)"' deployments-temp.json > deployments.json
-          cp deployments.json deployments-temp.json 
-          jq --arg var "${deployment_slo}" '.[0]."slo"."enumValues"."values"[0]."id" |= "\($var)"' deployments-temp.json > deployments.json
-          cp deployments.json deployments-temp.json 
-          jq --arg var "${deployment_environment}" '.[0]."environment"."enumValues"."values"[0]."id" |= "\($var)"' deployments-temp.json > deployments.json
-          cp deployments.json deployments-temp.json 
-          jq --arg org "${apigee_org}" --arg env "${apigee_env}" --arg var "${proxy_name}" '.[0]."resourceUri" |= "organizations/\($org)/apis/\($var)/revisions/1/environments/\($env)"' deployments-temp.json > deployments.json
-
-          echo ------------------------------------------------------------------------
-          echo "deployments.json" 
-          echo " "
-          cat deployments.json 
-          echo ------------------------------------------------------------------------
-
-          ####### update specs.json file
-          export CONTENT_B64=$(base64 --wrap=0 ../specs/oas/proxy/airports-spec.yaml)
-
-          jq --arg var "${proxy_name}" '.[0].name |= "projects/PROJECT_ID/locations/LOCATION/apis/\($var)/versions/version-1/specs/spec1"' specs-temp.json > specs.json
-          cp  specs.json specs-temp.json 
-          jq --arg var "${CONTENT_B64}" '.[0].contents.contents |= "\($var)"' specs-temp.json > specs.json
-
-          echo ------------------------------------------------------------------------
-          echo "specs.json" 
-          echo " "
-          cat specs.json
-          echo ------------------------------------------------------------------------
-
-          # deploy to API Hub
-          echo "mvn clean install -Pdev -DprojectId=$apigee_org -Dlocation=$apihub_region -Dfile=sa.json -Dapigee.apihub.config.options=update"
-          mvn install -q -Pdev -DprojectId=$apigee_org -Dlocation=$apihub_region -Dfile=sa.json -Dapigee.apihub.config.options=update
-
-
-# JOB 5 ------------------------------------------------------------------------
-
-  AAS-risk-assesment:
-    needs: [deploy-apigee-proxy]
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    runs-on: ubuntu-latest
-  
-    steps:
-      - uses: actions/checkout@v4   
-
-   # Install apigeecli (required to generate GCP Token from SA JSON key file)
-      - name: Install Apigeecli
-        run: curl -L https://raw.githubusercontent.com/apigee/apigeecli/main/downloadLatest.sh | sh -
-
-    # Generate SA key file from secret variable
-      - name: Run AAS Security Assessment
-        run: |
-          # retrieve / set variables
-          set -a
-          source .env
-          set +a
-          export proxy_name="$proxy_name$APIGEE_DEPLOYMENT_SUFFIX"
-          echo "proxy_name=$proxy_name"
-
-          echo $GCP_SERVICE_ACCOUNT >  sa.json
-          export GCP_TOKEN=$(/home/runner/.apigeecli/bin/apigeecli token gen -a sa.json)
-
-          # call Apigee securityAssessmentResults.batchCompute API to assess risk for the deployed proxy
-          curl  -X POST  -H "Content-Type:application/json" -H "Authorization:Bearer $GCP_TOKEN" \
-            -d "{
-                  \"profile\": \"google-default\",
-                  \"scope\": \"$apigee_env\",
-                  \"include\": {
-                      \"resources\": [
-                        {
-                          \"type\": \"API_PROXY\",
-                          \"name\": \"$proxy_name\"
-                        }
-                      ]
-                    }
-                  }" \
-          "https://apigee.googleapis.com/v1/organizations/$apigee_org/securityAssessmentResults:batchCompute" \
-          -o assessment_results.json
-
-          # Create assessment from AAS results in JSON file and template
-          export JS_CODE="jsonData = $(cat assessment_results.json)"
-          envsubst < ./test/AAS/assessment_results_template.html > AAS_assessment_results.html
-
-
-      - name: Archive Artifact AAS results
-        uses: actions/upload-artifact@v4
-        with:
-          name: AAS-report
-          path: ./AAS_assessment_results.html
-          retention-days: 5
