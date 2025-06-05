@@ -42,8 +42,7 @@ jobs:
         shell: bash
         run: |
           # bash install-apigee-go-gen 
-          # change it to apigee-go-gen when issue fixed !!!!
-          curl -s https://raw.githubusercontent.com/g-lalevee/apigee-go-gen/issue-11/install | bash
+          curl -s https://apigee.github.io/apigee-go-gen/install | bash
 
 
       # Generate Apigee proxy from spec except if Git message contains [skip generate]
